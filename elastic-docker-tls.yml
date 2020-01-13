@@ -2,7 +2,7 @@ version: '2.2'
 
 services:
   es01:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.1
     container_name: es01
     environment:
       - node.name=es01
@@ -10,7 +10,13 @@ services:
       - discovery.seed_hosts=es02,es03
       - cluster.initial_master_nodes=es01,es02,es03
       - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms4g -Xmx4g"
+      - index.store.type=mmapfs      
+      - node.master=true
+      - node.data=false
+      - node.ingest=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -XX:-UseConcMarkSweepGC -XX:-UseCMSInitiatingOccupancyOnly -XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=75"
+      - path.repo=/mnt/repo
+      - reindex.remote.whitelist=[18.136.25.238:9200, 118.69.153.6:9220]
       - ELASTIC_PASSWORD=$ELASTIC_PASSWORD 
       - xpack.license.self_generated.type=trial 
       - xpack.security.enabled=true
@@ -30,19 +36,14 @@ services:
     volumes:
       - data01:/usr/share/elasticsearch/data
       - certs:$CERTS_DIR
+      - snapshot:/mnt/repo
     ports:
       - 9200:9200
     networks:
       - elastic
 
-    healthcheck:
-      test: curl --cacert $CERTS_DIR/ca/ca.crt -s https://localhost:9200 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
   es02:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.1
     container_name: es02
     environment:
       - node.name=es02
@@ -50,7 +51,13 @@ services:
       - discovery.seed_hosts=es01,es03
       - cluster.initial_master_nodes=es01,es02,es03
       - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms4g -Xmx4g"
+      - index.store.type=mmapfs
+      - node.master=true
+      - node.data=false
+      - node.ingest=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -XX:-UseConcMarkSweepGC -XX:-UseCMSInitiatingOccupancyOnly -XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=75"
+      - path.repo=/mnt/repo
+      - reindex.remote.whitelist=[18.136.25.238:9200, 118.69.153.6:9220]
       - ELASTIC_PASSWORD=$ELASTIC_PASSWORD
       - xpack.license.self_generated.type=trial
       - xpack.security.enabled=true
@@ -70,11 +77,12 @@ services:
     volumes:
       - data02:/usr/share/elasticsearch/data
       - certs:$CERTS_DIR
+      - snapshot:/mnt/repo
     networks:
       - elastic
 
   es03:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.1
     container_name: es03
     environment:
       - node.name=es03
@@ -82,14 +90,20 @@ services:
       - discovery.seed_hosts=es01,es02
       - cluster.initial_master_nodes=es01,es02,es03
       - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms4g -Xmx4g"
+      - index.store.type=mmapfs
+      - node.master=true
+      - node.data=false
+      - node.ingest=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -XX:-UseConcMarkSweepGC -XX:-UseCMSInitiatingOccupancyOnly -XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=75"
+      - path.repo=/mnt/repo
+      - reindex.remote.whitelist=[18.136.25.238:9200, 118.69.153.6:9220]
       - ELASTIC_PASSWORD=$ELASTIC_PASSWORD
       - xpack.license.self_generated.type=trial
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=true
       - xpack.security.http.ssl.key=$CERTS_DIR/es03/es03.key
       - xpack.security.http.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
-      - xpack.security.http.ssl.certificate=$CERTS_DIR/es02/es02.crt
+      - xpack.security.http.ssl.certificate=$CERTS_DIR/es03/es03.crt
       - xpack.security.transport.ssl.enabled=true
       - xpack.security.transport.ssl.verification_mode=certificate
       - xpack.security.transport.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
@@ -102,19 +116,103 @@ services:
     volumes:
       - data03:/usr/share/elasticsearch/data
       - certs:$CERTS_DIR
+      - snapshot:/mnt/repo
     networks:
       - elastic
+
+  es04:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.1
+    container_name: es04
+    environment:
+      - node.name=es04
+      - index.store.type=mmapfs
+      - indices.memory.index_buffer_size=30%
+      - node.master=false
+      - node.data=true
+      - node.ingest=false
+      - discovery.seed_hosts=es01,es02,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms16g -Xmx16g -XX:-UseConcMarkSweepGC -XX:-UseCMSInitiatingOccupancyOnly -XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=75"
+      - path.repo=/mnt/repo
+      - reindex.remote.whitelist=[18.136.25.238:9200, 118.69.153.6:9220]
+      - ELASTIC_PASSWORD=$ELASTIC_PASSWORD
+      - xpack.license.self_generated.type=trial
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=$CERTS_DIR/es04/es04.key
+      - xpack.security.http.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      - xpack.security.http.ssl.certificate=$CERTS_DIR/es04/es04.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=$CERTS_DIR/es04/es04.crt
+      - xpack.security.transport.ssl.key=$CERTS_DIR/es04/es04.key
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data04:/usr/share/elasticsearch/data
+      - certs:$CERTS_DIR
+      - snapshot:/mnt/repo
+    networks:
+      - elastic
+
+  ingest:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.1
+    container_name: esingest
+    environment:
+      - node.name=esingest
+      - index.store.type=mmapfs
+      - node.master=false
+      - node.data=false
+      - node.ingest=true
+      - discovery.seed_hosts=es01,es02,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms4g -Xmx4g -XX:-UseConcMarkSweepGC -XX:-UseCMSInitiatingOccupancyOnly -XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=75"
+      - http.port=9220
+      - path.repo=/mnt/repo
+      - reindex.remote.whitelist=[18.136.25.238:9200,118.69.153.6:9220]
+      - ELASTIC_PASSWORD=$ELASTIC_PASSWORD
+      - xpack.license.self_generated.type=trial
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=$CERTS_DIR/esingest/esingest.key
+      - xpack.security.http.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      - xpack.security.http.ssl.certificate=$CERTS_DIR/esingest/esingest.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=$CERTS_DIR/esingest/esingest.crt
+      - xpack.security.transport.ssl.key=$CERTS_DIR/esingest/esingest.key
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - dataingest:/usr/share/elasticsearch/data
+      - certs:$CERTS_DIR
+      - snapshot:/mnt/repo      
+    ports: 
+      - 9220:9220
+    networks:
+      - elastisdasd
+
 # tag::kibana-config[]
   kib01:
-    image: docker.elastic.co/kibana/kibana:7.4.0
+    image: docker.elastic.co/kibana/kibana:7.5.1
     container_name: kib01
-    depends_on: {"es01": {"condition": "service_healthy"}}
+    depends_on: {"esingest": {"condition": "service_healthy"}}
     ports:
       - 5601:5601
     environment:
       SERVERNAME: localhost
-      ELASTICSEARCH_URL: https://es01:9200
-      ELASTICSEARCH_HOSTS: https://es01:9200
+      ELASTICSEARCH_URL: https://esingest:9220
+      ELASTICSEARCH_HOSTS: https://esingest:9220
       ELASTICSEARCH_USERNAME: kibana
       ELASTICSEARCH_PASSWORD: CHANGEME
       ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES: $CERTS_DIR/ca/ca.crt
@@ -133,6 +231,15 @@ volumes:
     driver: local
   data03:
     driver: local
+  data04:
+    driver: local
+  dataingest:
+    driver: local
+  snapshot:
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      devices: '/mnt/repo'
   certs:
     driver: local
 
