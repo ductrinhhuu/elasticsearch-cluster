@@ -1,3 +1,27 @@
+### Prerequisite
+ - docker
+ - docker-compose
+ 
+Install docker
+```
+	sudo apt install docker.io
+```
+
+Install docker-compose
+Check the current release and if necessary, update it:
+```
+	sudo curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+```
+Set permission:
+```
+	sudo chmod +x /usr/local/bin/docker-compose:
+```
+Verify it's working
+```
+	docker-compose --version
+```
+### Installation
+
 1. Generate certificates for Elasticsearch by bringing up the create-certs container:
 ```
 	docker-compose -f create-certs.yml run --rm create_certs
