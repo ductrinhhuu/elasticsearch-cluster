@@ -14,7 +14,7 @@ Check the current release and if necessary, update it:
 ```
 Set permission:
 ```
-	sudo chmod +x /usr/local/bin/docker-compose:
+	sudo chmod +x /usr/local/bin/docker-compose
 ```
 Verify it's working
 ```
